@@ -1,0 +1,222 @@
+openapi: 3.1.0
+info:
+  title: AI Assistant API
+  version: "1.0.0"
+  description: >
+    Универсальный ассистент для семантического поиска и
+    генерации проектной документации (SRS, NFR, Use Cases, диаграммы).
+
+servers:
+  - url: http://localhost:8000
+
+paths:
+  /search:
+    post:
+      summary: Семантический поиск по базе знаний
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SearchRequest'
+      responses:
+        "200":
+          description: Результаты поиска
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchResponse'
+
+  /generate:
+    post:
+      summary: Генерация SRS / NFR / Use Cases и диаграмм
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenerateRequest'
+      responses:
+        "200":
+          description: Сгенерированные документы
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenerateResponse'
+
+  /settings:
+    get:
+      summary: Получить текущие настройки ассистента
+      responses:
+        "200":
+          description: Настройки
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Settings'
+    put:
+      summary: Обновить настройки ассистента
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Settings'
+      responses:
+        "200":
+          description: OK
+
+  /feedback:
+    post:
+      summary: Оценка результата (лайк/дизлайк + комментарий)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Feedback'
+      responses:
+        "204":
+          description: Accepted
+
+  /upload:
+    post:
+      summary: Загрузить новый источник данных (файл / видео)
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                category:
+                  type: string
+                  description: pdf | docx | video | meeting
+      responses:
+        "201":
+          description: Uploaded
+
+  /health:
+    get:
+      summary: Проверка работоспособности сервиса
+      responses:
+        "200":
+          description: OK
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: OK
+
+components:
+  schemas:
+    SearchRequest:
+      type: object
+      properties:
+        query:
+          type: string
+        top_k:
+          type: integer
+          default: 5
+
+    SearchResult:
+      type: object
+      properties:
+        doc_id:
+          type: string
+        score:
+          type: number
+          format: float
+        snippet:
+          type: string
+        source:
+          type: string
+
+    SearchResponse:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/SearchResult'
+        suggestions:
+          type: array
+          items:
+            type: string
+
+    GenerateRequest:
+      type: object
+      properties:
+        user_request:
+          type: string
+        target_format:
+          type: string
+          enum: [markdown, pdf, docx]
+          default: markdown
+
+    Diagram:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [C4Context, C4Container, UMLClass, UMLSequence]
+        url:
+          type: string
+          format: uri
+
+    GenerateResponse:
+      type: object
+      properties:
+        srs:
+          type: string
+          description: Markdown / HTML / ссылка
+        nfr:
+          type: string
+        usecases:
+          type: string
+        diagrams:
+          type: array
+          items:
+            $ref: '#/components/schemas/Diagram'
+        rfc:
+          type: string
+        summary:
+          type: string
+        sources:
+          type: array
+          items:
+            type: string
+            format: uri
+
+    Settings:
+      type: object
+      properties:
+        model:
+          type: string
+        data_sources:
+          type: array
+          items:
+            type: string
+        feedback_enabled:
+          type: boolean
+
+    Feedback:
+      type: object
+      properties:
+        endpoint:
+          type: string
+          enum: [/search, /generate]
+        doc_id:
+          type: string
+          nullable: true
+        rating:
+          type: string
+          enum: [like, dislike]
+        comment:
+          type: string
+      required:
+        - endpoint
+        - rating
